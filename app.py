@@ -57,10 +57,14 @@ image_transform = T.Compose([
 def load_captions():
     df = pd.read_csv("test_caption_list.csv")
 
-    # ⭐⭐ 關鍵：先限制數量（demo 完全夠）
+    # ⭐⭐ demo 用，先限制數量
     df = df.sample(20000, random_state=42)
 
     return df["caption_title_and_reference_description"].astype(str).tolist()
+
+# ✅ 少的就是這一行
+candidate_texts = load_captions()
+
 
 def encode_texts_in_batches(texts, batch_size=16):
     all_embs = []
@@ -152,4 +156,5 @@ with right:
 
     if not uploaded:
         st.info("請先上傳一張圖片，然後點擊「開始匹配」")
+
 
