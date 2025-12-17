@@ -56,9 +56,37 @@ image_transform = T.Compose([
 @st.cache_data
 def load_captions():
     df = pd.read_csv("test_caption_list.csv")
+
+    # ⭐⭐ 關鍵：先限制數量（demo 完全夠）
+    df = df.sample(20000, random_state=42)
+
     return df["caption_title_and_reference_description"].astype(str).tolist()
 
-candidate_texts = load_captions()
+def encode_texts_in_batches(texts, batch_size=16):
+    all_embs = []
+
+    for i in range(0, len(texts), batch_size):
+        batch = texts[i:i + batch_size]
+
+        tokens = tokenizer(
+            batch,
+            padding="max_length",
+            truncation=True,
+            max_length=MAX_LEN,
+            return_tensors="pt"
+        )
+
+        with torch.no_grad():
+            emb = text_encoder(
+                input_ids=tokens["input_ids"].to(DEVICE),
+                attention_mask=tokens["attention_mask"].to(DEVICE)
+            ).last_hidden_state[:, 0]
+
+            emb = F.normalize(emb, dim=1).cpu()
+
+        all_embs.append(emb)
+
+    return torch.cat(all_embs, dim=0)
 
 # ======================================================
 # Streamlit UI
@@ -103,21 +131,7 @@ with right:
                 img_emb = image_encoder(img_tensor)
                 img_emb = F.normalize(img_emb, dim=1)
 
-            # --- Encode all captions ---
-            tokens = tokenizer(
-                candidate_texts,
-                padding="max_length",
-                truncation=True,
-                max_length=MAX_LEN,
-                return_tensors="pt"
-            )
-
-            with torch.no_grad():
-                txt_emb = text_encoder(
-                    input_ids=tokens["input_ids"].to(DEVICE),
-                    attention_mask=tokens["attention_mask"].to(DEVICE)
-                ).last_hidden_state[:, 0]
-                txt_emb = F.normalize(txt_emb, dim=1)
+            txt_emb = encode_texts_in_batches(candidate_texts, batch_size=16)
 
             # --- Similarity & Top-K ---
             sims = (img_emb @ txt_emb.T).squeeze(0)
@@ -138,3 +152,4 @@ with right:
 
     if not uploaded:
         st.info("請先上傳一張圖片，然後點擊「開始匹配」")
+
