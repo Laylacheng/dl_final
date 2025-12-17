@@ -1,5 +1,5 @@
 # ======================================================
-# app.py — Wiki Image Matcher (Minimal Working Demo)
+# app.py — Wiki Image Matcher (Stable Demo Version)
 # ======================================================
 
 import streamlit as st
@@ -39,6 +39,7 @@ def load_models():
 
     return image_encoder, text_encoder, tokenizer
 
+
 image_encoder, text_encoder, tokenizer = load_models()
 
 # ======================================================
@@ -51,21 +52,23 @@ image_transform = T.Compose([
 ])
 
 # ======================================================
-# Load caption list
+# Load caption list (Demo subset)
 # ======================================================
 @st.cache_data
 def load_captions():
     df = pd.read_csv("test_caption_list.csv")
 
-    # ⭐⭐ demo 用，先限制數量
-    df = df.sample(8000, random_state=42)
+    # ⭐ Demo 用子集合（避免記憶體爆掉）
+    df = df.sample(4000, random_state=42)
 
     return df["caption_title_and_reference_description"].astype(str).tolist()
 
-# ✅ 少的就是這一行
+
 candidate_texts = load_captions()
 
-
+# ======================================================
+# Encode captions in batches (memory-safe)
+# ======================================================
 def encode_texts_in_batches(texts, batch_size=16):
     all_embs = []
 
@@ -91,6 +94,15 @@ def encode_texts_in_batches(texts, batch_size=16):
         all_embs.append(emb)
 
     return torch.cat(all_embs, dim=0)
+
+
+# ======================================================
+# Cache caption embeddings (CRITICAL)
+# ======================================================
+@st.cache_resource
+def get_caption_embeddings(texts):
+    return encode_texts_in_batches(texts, batch_size=16)
+
 
 # ======================================================
 # Streamlit UI
@@ -124,20 +136,21 @@ with right:
 
     if uploaded:
         image = Image.open(uploaded).convert("RGB")
-        st.image(image, caption="輸入影像", use_column_width=True)
+        st.image(image, caption="輸入影像", width=400)
 
     if start_btn and uploaded:
         with st.spinner("模型推論中..."):
 
-            # --- Encode image ---
+            # Encode image
             img_tensor = image_transform(image).unsqueeze(0).to(DEVICE)
             with torch.no_grad():
                 img_emb = image_encoder(img_tensor)
                 img_emb = F.normalize(img_emb, dim=1)
 
-            txt_emb = encode_texts_in_batches(candidate_texts, batch_size=16)
+            # Encode captions (cached)
+            txt_emb = get_caption_embeddings(candidate_texts)
 
-            # --- Similarity & Top-K ---
+            # Similarity & Top-K
             sims = (img_emb @ txt_emb.T).squeeze(0)
             scores, indices = sims.topk(topk)
 
@@ -149,13 +162,10 @@ with right:
             st.markdown(
                 f"""
                 **{rank}. {candidate_texts[idx]}**  
-                <span style="color:gray">Similarity: {score:.4f}</span>
+                <span style="color:gray">Similarity score: {score:.4f}</span>
                 """,
                 unsafe_allow_html=True
             )
 
     if not uploaded:
         st.info("請先上傳一張圖片，然後點擊「開始匹配」")
-
-
-
