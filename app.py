@@ -58,7 +58,7 @@ def load_captions():
     df = pd.read_csv("test_caption_list.csv")
 
     # ⭐⭐ demo 用，先限制數量
-    df = df.sample(20000, random_state=42)
+    df = df.sample(8000, random_state=42)
 
     return df["caption_title_and_reference_description"].astype(str).tolist()
 
@@ -156,5 +156,6 @@ with right:
 
     if not uploaded:
         st.info("請先上傳一張圖片，然後點擊「開始匹配」")
+
 
 
