@@ -1,0 +1,7 @@
+torch
+torchvision
+timm
+transformers
+pandas
+Pillow
+streamlit
