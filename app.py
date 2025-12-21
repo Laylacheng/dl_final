@@ -1,7 +1,3 @@
-# ======================================================
-# app.py — Wiki Image Matcher (Stable Demo Version)
-# ======================================================
-
 import streamlit as st
 import torch
 import torch.nn.functional as F
@@ -11,18 +7,14 @@ from PIL import Image
 import torchvision.transforms as T
 import pandas as pd
 
-# ======================================================
 # Basic Config
-# ======================================================
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 IMAGE_MODEL_NAME = "vit_base_patch16_siglip_384"
 TEXT_MODEL_NAME  = "sentence-transformers/clip-ViT-B-32-multilingual-v1"
 MAX_LEN = 39
 
-# ======================================================
 # Load models from Hugging Face / timm
-# ======================================================
 @st.cache_resource
 def load_models():
     image_encoder = timm.create_model(
@@ -39,36 +31,26 @@ def load_models():
 
     return image_encoder, text_encoder, tokenizer
 
-
 image_encoder, text_encoder, tokenizer = load_models()
 
-# ======================================================
 # Image preprocessing
-# ======================================================
 image_transform = T.Compose([
     T.Resize((384, 384)),
     T.ToTensor(),
     T.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
 ])
 
-# ======================================================
 # Load caption list (Demo subset)
-# ======================================================
 @st.cache_data
 def load_captions():
     df = pd.read_csv("test_caption_list.csv")
 
-    # ⭐ Demo 用子集合（避免記憶體爆掉）
+    # 避免記憶體爆掉
     df = df.sample(4000, random_state=42)
-
     return df["caption_title_and_reference_description"].astype(str).tolist()
 
-
 candidate_texts = load_captions()
-
-# ======================================================
 # Encode captions in batches (memory-safe)
-# ======================================================
 def encode_texts_in_batches(texts, batch_size=16):
     all_embs = []
 
@@ -95,24 +77,17 @@ def encode_texts_in_batches(texts, batch_size=16):
 
     return torch.cat(all_embs, dim=0)
 
-
-# ======================================================
 # Cache caption embeddings (CRITICAL)
-# ======================================================
 @st.cache_resource
 def get_caption_embeddings(texts):
     return encode_texts_in_batches(texts, batch_size=16)
 
-
-# ======================================================
 # Streamlit UI
-# ======================================================
 st.set_page_config(page_title="Wiki Image Matcher", layout="wide")
 st.title("影像標題配對｜Wiki Image Matcher")
 
 left, right = st.columns([1.2, 1])
 
-# ---------------- LEFT PANEL ----------------
 with left:
     st.subheader("上傳圖像")
     uploaded = st.file_uploader(
@@ -130,7 +105,6 @@ with left:
 
     start_btn = st.button("開始匹配")
 
-# ---------------- RIGHT PANEL ----------------
 with right:
     st.subheader("匹配結果")
 
@@ -154,7 +128,7 @@ with right:
             sims = (img_emb @ txt_emb.T).squeeze(0)
             scores, indices = sims.topk(topk)
 
-        st.success("匹配完成 ✅")
+        st.success("匹配完成")
 
         for rank, (idx, score) in enumerate(
             zip(indices.tolist(), scores.tolist()), start=1
@@ -169,3 +143,4 @@ with right:
 
     if not uploaded:
         st.info("請先上傳一張圖片，然後點擊「開始匹配」")
+
