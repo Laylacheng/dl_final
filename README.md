@@ -1,2 +1,2 @@
 # dl_final
-這份專案是Dual Encoder架構，使用image encoder跟text encoder分別抓影像與語言的語義特徵。透過projection layer將兩個特徵映射到共享空間，之後用CLIP Loss進行對比式學習以及使用矩陣運算計算相似度，最後評估九用NDCG@5 指標衡量檢索結果的準確性與排序品質。
+這份專案是Dual Encoder架構，使用image encoder跟text encoder分別抓影像與語言的語義特徵。透過projection layer將兩個特徵映射到共享空間，之後用CLIP Loss進行對比式學習以及使用矩陣運算計算相似度，最後評估就用NDCG@5 指標衡量檢索結果的準確性與排序品質。
